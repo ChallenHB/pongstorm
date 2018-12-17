@@ -1,9 +1,6 @@
 package com.headstorm.pongstorm.rating.glicko2
 
-import kotlin.math.PI
-import kotlin.math.exp
-import kotlin.math.ln
-import kotlin.math.pow
+import kotlin.math.*
 
 val epsilon = 0.000001
 
@@ -38,18 +35,42 @@ fun deltaSumFunction(player: Player, result: Result): Float {
 }
 
 fun calculateDeviation(volatility: Float, deviation: Float, v: Float, delta: Float, tao: Float): Float {
-    val fx = createIterativeDeviationFn(deviation, v, delta, tao)
     val a = ln(volatility.pow(2))
+    val fx = createIterativeDeviationFn(deviation, v, delta, tao, a)
     val d2 = delta.pow(2)
     val b = when {
         d2 > deviation.pow(2) + v -> ln(d2 - deviation.pow(2) - v)
-        else -> 
+        else -> {
+            var k = 1
+            while (fx(a - k * tao) < 0) {
+               k++
+            }
+            a - k * tao
+        }
+    }
+    var A = a
+    var B = b
+    var fA = fx(A)
+    var fB = fx(B)
+    while (abs(B - A) > epsilon) {
+        val C = A + (A - B) * fA / (fB - fA)
+        val fC = fx(C)
+        when {
+            fC * fB < 0 -> {
+                A = B
+                fA = fx(A)
+            }
+            else -> fA  /= 2
+        }
+        B = C
+        fB = fC
     }
 
-    return 1f
+    return exp(A / 2)
 }
 
-fun createIterativeDeviationFn(deviation: Float, v: Float, delta: Float, tao: Float): (Float, Float) -> Float = { x, a ->
+fun createIterativeDeviationFn(deviation: Float, v: Float, delta: Float, tao: Float, a: Float): (Float) -> Float =
+{ x ->
     val num1 = exp(x) * (delta.pow(2) - deviation.pow(2) - v - exp(x))
     val den1 = 2 * (deviation.pow(2) + v + exp(x)).pow(2)
 
