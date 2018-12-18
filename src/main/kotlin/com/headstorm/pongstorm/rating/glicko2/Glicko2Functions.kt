@@ -2,14 +2,24 @@ package com.headstorm.pongstorm.rating.glicko2
 
 import kotlin.math.*
 
-val epsilon = 0.000001
+const val epsilon = 0.000001
 
 // This function will take glicko2 scores, not glicko scores
 fun calculatePlayerScore(player: Player, results: List<Result>): Player {
 
+    // Is this needed? Determine if this is just naturally handled.
+    if (results.isEmpty()) {
+        val deviation = sqrt(player.deviation.pow(2) + player.volatility.pow(2))
+        return Player(player.id, player.rating, player.volatility, player.deviation)
+    }
+
     val v = results.map{ vSumFunction(player, it) }.reduce{ acc, it -> acc + it }.pow(-1)
     val delta = results.map{ deltaSumFunction(player, it) }.reduce{ acc, it -> acc + it }.times(v)
-    return Player(123, 1f, 1f, 1f)
+    val volatility = calculateVolatility(player.volatility, player.deviation, v, delta, 0.06f)
+    val deviationStar = sqrt(player.deviation.pow(2) + volatility.pow(2))
+    val deviation = sqrt(deviationStar.pow(-2) + v.pow(-1))
+    val rating = player.rating + deviation.pow(2) * results.map{ deltaSumFunction(player, it) }.reduce{ acc, it -> acc + it }
+    return Player(player.id, rating, volatility, deviation)
 }
 
 fun vSumFunction(player: Player, result: Result): Float {
@@ -34,7 +44,7 @@ fun deltaSumFunction(player: Player, result: Result): Float {
     return gValue * (result.type.score - eValue)
 }
 
-fun calculateDeviation(volatility: Float, deviation: Float, v: Float, delta: Float, tao: Float): Float {
+fun calculateVolatility(volatility: Float, deviation: Float, v: Float, delta: Float, tao: Float): Float {
     val a = ln(volatility.pow(2))
     val fx = createIterativeDeviationFn(deviation, v, delta, tao, a)
     val d2 = delta.pow(2)
@@ -60,7 +70,7 @@ fun calculateDeviation(volatility: Float, deviation: Float, v: Float, delta: Flo
                 A = B
                 fA = fx(A)
             }
-            else -> fA  /= 2
+            else -> fA /= 2
         }
         B = C
         fB = fC
