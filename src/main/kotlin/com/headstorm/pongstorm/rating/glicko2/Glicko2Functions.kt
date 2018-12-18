@@ -48,16 +48,16 @@ fun calculateVolatility(volatility: Float, deviation: Float, v: Float, delta: Fl
     val a = ln(volatility.pow(2))
     val fx = createIterativeDeviationFn(deviation, v, delta, tao, a)
     val d2 = delta.pow(2)
-    val b = when {
-        d2 > deviation.pow(2) + v -> ln(d2 - deviation.pow(2) - v)
-        else -> {
-            var k = 1
-            while (fx(a - k * tao) < 0) {
-               k++
+    val b =
+        if (d2 > deviation.pow(2) + v)
+            ln(d2 - deviation.pow(2) - v)
+        else {
+                var k = 1
+                while (fx(a - k * tao) < 0) {
+                   k++
+                }
+                a - k * tao
             }
-            a - k * tao
-        }
-    }
     var A = a
     var B = b
     var fA = fx(A)
