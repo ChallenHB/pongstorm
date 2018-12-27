@@ -4,13 +4,18 @@ import kotlin.math.*
 
 const val epsilon = 0.000001
 
-// This function will take glicko2 scores, not glicko scores
-fun calculatePlayerScore(player: Player, results: List<Result>): Player {
+fun calculatePlayerScore1(player: Player, results: List<Outcome>): Player {
+    val outPlayer = calculatePlayerScore(toGlicko2(player), results.map{ it.copy(opponent = toGlicko2(it.opponent)) })
 
+    return toGlicko1(outPlayer)
+}
+
+// This function will take glicko2 scores, not glicko scores
+fun calculatePlayerScore(player: Player, results: List<Outcome>): Player {
     // Is this needed? Determine if this is just naturally handled.
     if (results.isEmpty()) {
         val deviation = sqrt(player.deviation.pow(2) + player.volatility.pow(2))
-        return Player(player.id, player.rating, player.volatility, player.deviation)
+        return Player(player.id, player.rating, player.volatility, deviation)
     }
 
     val v = results.map{ vSumFunction(player, it) }.reduce{ acc, it -> acc + it }.pow(-1)
@@ -22,7 +27,22 @@ fun calculatePlayerScore(player: Player, results: List<Result>): Player {
     return Player(player.id, rating, volatility, deviation)
 }
 
-fun vSumFunction(player: Player, result: Result): Float {
+fun toGlicko2(player: Player): Player {
+    return player.copy(
+            rating = player.rating.minus(1500).div(173.7178).toFloat(),
+            deviation = player.deviation.div(173.7178).toFloat()
+
+    )
+}
+
+fun toGlicko1(player: Player): Player {
+    return player.copy(
+            rating = player.rating.times(173.7178).plus(1500).toFloat(),
+            deviation = player.deviation.times(173.7178).toFloat()
+    )
+}
+
+fun vSumFunction(player: Player, result: Outcome): Float {
     val playerRating = player.rating
     val oppRating = result.opponent.rating
     val oppDeviation = result.opponent.deviation
@@ -33,7 +53,7 @@ fun vSumFunction(player: Player, result: Result): Float {
     return gValue.pow(2) * eValue * (1 - eValue)
 }
 
-fun deltaSumFunction(player: Player, result: Result): Float {
+fun deltaSumFunction(player: Player, result: Outcome): Float {
     val playerRating = player.rating
     val oppRating = result.opponent.rating
     val oppDeviation = result.opponent.rating
@@ -96,5 +116,5 @@ fun eFunction(rating: Float, oppRating: Float, oppDeviation: Float): Float {
 
 // Is it faster to 1/val or val.pow(-1)? (benchmarks)
 fun gFunction(deviation: Float): Float {
-    return (1 + 3 * deviation.pow(2) / PI).toFloat().pow(-1)
+    return sqrt(1 + 3 * deviation.pow(2) / PI.pow(2)).pow(-1).toFloat()
 }
