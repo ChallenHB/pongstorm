@@ -22,7 +22,7 @@ fun calculatePlayerScore(player: Player, results: List<Outcome>): Player {
     val delta = results.map{ deltaSumFunction(player, it) }.reduce{ acc, it -> acc + it }.times(v)
     val volatility = calculateVolatility(player.volatility, player.deviation, v, delta, 0.06f)
     val deviationStar = sqrt(player.deviation.pow(2) + volatility.pow(2))
-    val deviation = sqrt(deviationStar.pow(-2) + v.pow(-1))
+    val deviation = sqrt(deviationStar.pow(-2) + v.pow(-1)).pow(-1)
     val rating = player.rating + deviation.pow(2) * results.map{ deltaSumFunction(player, it) }.reduce{ acc, it -> acc + it }
     return Player(player.id, rating, volatility, deviation)
 }
@@ -56,7 +56,7 @@ fun vSumFunction(player: Player, result: Outcome): Float {
 fun deltaSumFunction(player: Player, result: Outcome): Float {
     val playerRating = player.rating
     val oppRating = result.opponent.rating
-    val oppDeviation = result.opponent.rating
+    val oppDeviation = result.opponent.deviation
 
     val gValue = gFunction(oppDeviation)
     val eValue = eFunction(playerRating, oppRating, oppDeviation)
