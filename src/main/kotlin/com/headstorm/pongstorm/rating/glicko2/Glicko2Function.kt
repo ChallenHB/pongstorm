@@ -4,26 +4,25 @@ import kotlin.math.*
 
 const val epsilon = 0.000001
 
-fun calculatePlayerScore1(player: Player, results: List<Outcome>): Player {
-    val outPlayer = calculatePlayerScore(toGlicko2(player), results.map{ it.copy(opponent = toGlicko2(it.opponent)) })
+fun calculatePlayerScoreGlicko(player: Player, outcomes: List<GameOutcome>): Player {
+    val outPlayer = calculatePlayerScoreGlicko2(toGlicko2(player), outcomes.map{ it.copy(opponent = toGlicko2(it.opponent)) })
 
     return toGlicko1(outPlayer)
 }
 
-// This function will take glicko2 scores, not glicko scores
-fun calculatePlayerScore(player: Player, results: List<Outcome>): Player {
-    // Is this needed? Determine if this is just naturally handled.
-    if (results.isEmpty()) {
+fun calculatePlayerScoreGlicko2(player: Player, outcomes: List<GameOutcome>): Player {
+    // TODO: Is this needed? Determine if this is just naturally handled.
+    if (outcomes.isEmpty()) {
         val deviation = sqrt(player.deviation.pow(2) + player.volatility.pow(2))
         return Player(player.id, player.rating, player.volatility, deviation)
     }
 
-    val v = results.map{ vSumFunction(player, it) }.reduce{ acc, it -> acc + it }.pow(-1)
-    val delta = results.map{ deltaSumFunction(player, it) }.reduce{ acc, it -> acc + it }.times(v)
+    val v = outcomes.map{ vSumFunction(player, it) }.reduce{ acc, it -> acc + it }.pow(-1)
+    val delta = outcomes.map{ deltaSumFunction(player, it) }.reduce{ acc, it -> acc + it }.times(v)
     val volatility = calculateVolatility(player.volatility, player.deviation, v, delta, 0.06f)
     val deviationStar = sqrt(player.deviation.pow(2) + volatility.pow(2))
     val deviation = sqrt(deviationStar.pow(-2) + v.pow(-1)).pow(-1)
-    val rating = player.rating + deviation.pow(2) * results.map{ deltaSumFunction(player, it) }.reduce{ acc, it -> acc + it }
+    val rating = player.rating + deviation.pow(2) * outcomes.map{ deltaSumFunction(player, it) }.reduce{ acc, it -> acc + it }
     return Player(player.id, rating, volatility, deviation)
 }
 
@@ -31,7 +30,6 @@ fun toGlicko2(player: Player): Player {
     return player.copy(
             rating = player.rating.minus(1500).div(173.7178).toFloat(),
             deviation = player.deviation.div(173.7178).toFloat()
-
     )
 }
 
@@ -42,10 +40,10 @@ fun toGlicko1(player: Player): Player {
     )
 }
 
-fun vSumFunction(player: Player, result: Outcome): Float {
+fun vSumFunction(player: Player, outcome: GameOutcome): Float {
     val playerRating = player.rating
-    val oppRating = result.opponent.rating
-    val oppDeviation = result.opponent.deviation
+    val oppRating = outcome.opponent.rating
+    val oppDeviation = outcome.opponent.deviation
 
     val gValue = gFunction(oppDeviation)
     val eValue = eFunction(playerRating, oppRating, oppDeviation)
@@ -53,15 +51,15 @@ fun vSumFunction(player: Player, result: Outcome): Float {
     return gValue.pow(2) * eValue * (1 - eValue)
 }
 
-fun deltaSumFunction(player: Player, result: Outcome): Float {
+fun deltaSumFunction(player: Player, outcome: GameOutcome): Float {
     val playerRating = player.rating
-    val oppRating = result.opponent.rating
-    val oppDeviation = result.opponent.deviation
+    val oppRating = outcome.opponent.rating
+    val oppDeviation = outcome.opponent.deviation
 
     val gValue = gFunction(oppDeviation)
     val eValue = eFunction(playerRating, oppRating, oppDeviation)
 
-    return gValue * (result.type.score - eValue)
+    return gValue * (outcome.type.score - eValue)
 }
 
 fun calculateVolatility(volatility: Float, deviation: Float, v: Float, delta: Float, tao: Float): Float {
@@ -85,6 +83,7 @@ fun calculateVolatility(volatility: Float, deviation: Float, v: Float, delta: Fl
     while (abs(B - A) > epsilon) {
         val C = A + (A - B) * fA / (fB - fA)
         val fC = fx(C)
+        // TODO: use if statement
         when {
             fC * fB < 0 -> {
                 A = B

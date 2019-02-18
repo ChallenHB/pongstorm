@@ -1,2 +1,2 @@
 * TODOS?  
-Read in results from csv potentially?
+Read in outcomes from csv potentially?
